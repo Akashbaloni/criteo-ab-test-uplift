@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Swap from "./Swap.jsx";
 import { scoreUsers } from "../lib/scorer.js";
 import { traitImpact, impactLevel } from "../lib/traits.js";
-import { fmtPP, fmtPrice, percentileOfValue, valueAtPercentile } from "../lib/metrics.js";
+import { fmtPP, fmtPrice, percentileOfValue, sharedShare, valueAtPercentile } from "../lib/metrics.js";
 import { useTech } from "../tech.js";
 
 const TOP = 5;
-const LEVEL_TEXT = { high: "High", medium: "Medium", low: "Low", unused: "Unused", wait: "…" };
+const LEVEL_TEXT = { high: "High", medium: "Medium", low: "Low", unused: "None", wait: "…" };
 
 const perThousand = (u) => {
   const v = u * 1000;
@@ -17,21 +17,23 @@ const perThousand = (u) => {
   return `${v < 0 ? "−" : "+"}${txt} / 1,000`;
 };
 
-function Trait({ index, feature, value, pct, impact, rank, onChange }) {
+function Trait({ index, feature, value, pct, impact, rank, shared, onChange }) {
   const tech = useTech();
   const level = impactLevel(impact);
   const name = tech ? feature : `Trait ${index + 1}`;
   const id = `trait-${feature}`, tipId = `tip-${feature}`;
   const p = Math.round(pct);
-  const where = p <= 1 ? "This person is at the very bottom for this trait."
+  // `shared` = how many of the 101 percentile points equal this value (a common default value)
+  const where = shared >= 10 ? `Like most users (about ${Math.min(99, shared)}%), this person has the default value for this trait.`
+    : p <= 1 ? "This person is at the very bottom for this trait."
     : p >= 99 ? "This person is at the very top for this trait."
     : `This person is higher than ${p}% of users.`;
   const effect = impact == null ? "Measuring how much it moves the prediction…"
-    : level === "unused" ? "The model does not use it, so moving this slider changes nothing."
+    : level === "unused" ? "Between typical values (5th to 95th percentile) it does not change the prediction."
     : `Moving it from low to high shifts the prediction by about ${impact >= 10 ? Math.round(impact) : impact.toFixed(1)} extra visitors per 1,000 on average.`;
   const head = tech ? `${feature}${rank ? ` · sensitivity rank ${rank} / 12` : ""}` : `Trait ${index + 1} = hidden feature ${feature}`;
   const body = tech
-    ? `Value ${value.toFixed(3)} at percentile ${p}.${impact == null ? "" : ` Mean |Δτ| from p5 to p95: ${impact.toFixed(2)} per 1,000${level === "unused" ? " (unused by the model)" : ""}.`}`
+    ? `Value ${value.toFixed(3)} at percentile ${p}.${impact == null ? "" : ` Mean |Δτ| from p5 to p95: ${impact.toFixed(2)} per 1,000${level === "unused" ? " (no change from p5 to p95)" : ""}.`}`
     : `Criteo anonymized what it measures. ${where} ${effect}`;
   return (
     <div className={`trait ${level === "unused" ? "unused" : ""}`}>
@@ -109,7 +111,7 @@ export default function Scorer({ scorer, pol, price }) {
   const restLevels = rest.map((i) => impactLevel(impact?.[i]));
   const count = (l) => restLevels.filter((x) => x === l).length;
   const restNote = impact
-    ? ` (${[["high", "high"], ["medium", "medium"], ["low", "low impact"], ["unused", "unused"]]
+    ? ` (${[["high", "high"], ["medium", "medium"], ["low", "low impact"], ["unused", "no effect"]]
         .filter(([l]) => count(l)).map(([l, w]) => `${count(l)} ${w}`).join(", ")})`
     : "";
 
@@ -121,7 +123,8 @@ export default function Scorer({ scorer, pol, price }) {
   };
   const renderTrait = (i) => (
     <Trait key={features[i]} index={i} feature={features[i]} value={values[i]} pct={featPct[i]}
-      impact={impact ? impact[i] : null} rank={impact ? order.indexOf(i) + 1 : null} onChange={setTrait(i)} />
+      impact={impact ? impact[i] : null} rank={impact ? order.indexOf(i) + 1 : null}
+      shared={sharedShare(fq[features[i]], values[i])} onChange={setTrait(i)} />
   );
 
   const people = presets ? [["Random person", null], ...Object.entries(presets)] : [["Random person", null]];

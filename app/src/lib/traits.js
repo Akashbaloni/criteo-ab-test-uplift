@@ -1,7 +1,9 @@
 // How much each feature moves the model's prediction.
 // For every sample user, one feature at a time is set to its 5th, 15th, ..., 95th percentile
 // and the user is re-scored; the impact is the average gap between the highest and lowest
-// predicted uplift. A feature the model never splits on gets exactly 0.
+// predicted uplift. A feature gets 0 when the prediction does not change between p5 and p95:
+// either the model never splits on it (f1), or almost every user shares one default value and
+// the model only splits on its rare extreme values (f4, f5, f10, f11).
 import { scoreUsers } from "./scorer.js";
 import { valueAtPercentile } from "./metrics.js";
 

@@ -90,13 +90,13 @@ Half of the users show essentially zero lift; the top decile by baseline activit
 
 The S-Learner ranks users almost like the activity score (Spearman ρ = 0.96). Its edge is in the top ~10%, which matters most for small budgets. `causalml` does not build on Python 3.13 / Windows, so the three meta-learners are implemented in [`src/uplift_models.py`](src/uplift_models.py).
 
-Only **7 of the 12 features** move the S-Learner's prediction. Setting one feature at a time to its 5th, 15th, …, 95th percentile for 400 sample users and re-scoring them, the average swing in predicted uplift is:
+For typical users, only **7 of the 12 features** move the S-Learner's prediction. Setting one feature at a time to its 5th, 15th, …, 95th percentile for 400 sample users and re-scoring them, the average swing in predicted uplift is:
 
 | Feature | f8 | f6 | f2 | f9 | f0 | f3 | f7 | f1, f4, f5, f10, f11 |
 |---|---|---|---|---|---|---|---|---|
 | Swing (extra visitors per 1,000) | 11.4 | 8.9 | 7.9 | 2.8 | 1.7 | 1.1 | 0.3 | 0 |
 
-The last five never change the prediction: the model does not use them.
+The last five do not change the prediction between their 5th and 95th percentiles. f1 is never used by the model; f4, f5, f10 and f11 sit on one default value for 95% to 99% of users (f5: 94.7%), so the model only reacts to their rare extreme values.
 
 ![Qini and uplift curves](reports/figures/07_qini_uplift_curves.png)
 

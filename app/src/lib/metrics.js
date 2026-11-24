@@ -52,13 +52,22 @@ export function valueAtPercentile(table, pct) {
   const lo = Math.floor(p), hi = Math.ceil(p);
   return lo === hi ? table[lo] : table[lo] + (table[hi] - table[lo]) * (p - lo);
 }
+/** Share of users (in percentile steps) that have exactly this value, e.g. a default most users share. */
+export function sharedShare(table, v) {
+  let n = 0;
+  for (let i = 0; i <= 100; i++) if (table[i] === v) n++;
+  return n;
+}
+
 export function percentileOfValue(table, v) {
-  if (v <= table[0]) return 0;
-  if (v >= table[100]) return 100;
-  // ties (many users share one default value) map to the middle of the tied range
+  // ties (many users share one default value) map to the middle of the tied range;
+  // checked first, because the default is often also the smallest or largest value
   let first = -1, last = -1;
   for (let i = 0; i <= 100; i++) if (table[i] === v) { if (first < 0) first = i; last = i; }
-  if (first >= 0) return (first + last) / 2;
+  if (first >= 0 && last > first) return (first + last) / 2;
+  if (v <= table[0]) return 0;
+  if (v >= table[100]) return 100;
+  if (first >= 0) return first;
   for (let i = 0; i < 100; i++) {
     if (v >= table[i] && v <= table[i + 1]) return i + (v - table[i]) / (table[i + 1] - table[i] || 1);
   }
