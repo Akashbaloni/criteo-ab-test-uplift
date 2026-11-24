@@ -1,32 +1,28 @@
-// Slowly drifting grid with a soft light that follows the pointer.
+// Moving grid, two slowly floating lights, and a soft glow that follows the pointer.
 import { useEffect, useRef } from "react";
 
 export default function Background() {
-  const ref = useRef(null);
+  const spot = useRef(null);
   useEffect(() => {
-    const c = ref.current, g = c.getContext("2d");
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let raf, t = 0, mx = 0.75, my = 0.1, tx = 0.75, ty = 0.1;
-    const D = Math.min(window.devicePixelRatio || 1, 2);
-    const fit = () => { c.width = innerWidth * D; c.height = innerHeight * D; };
-    const move = (e) => { tx = e.clientX / innerWidth; ty = e.clientY / innerHeight; };
-    fit();
-    addEventListener("resize", fit);
-    addEventListener("pointermove", move, { passive: true });
-    const draw = () => {
-      t++; mx += (tx - mx) * 0.05; my += (ty - my) * 0.05;
-      const w = c.width, h = c.height, s = 32 * D;
-      g.clearRect(0, 0, w, h);
-      g.strokeStyle = "rgba(255,255,255,0.03)"; g.lineWidth = 1;
-      for (let x = reduce ? 0 : (t * 0.12 * D) % s; x < w; x += s) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
-      for (let y = 0; y < h; y += s) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
-      const gr = g.createRadialGradient(mx * w, my * h, 0, mx * w, my * h, Math.max(w, h) * 0.45);
-      gr.addColorStop(0, "rgba(124,131,255,0.12)"); gr.addColorStop(1, "rgba(124,131,255,0)");
-      g.fillStyle = gr; g.fillRect(0, 0, w, h);
-      raf = requestAnimationFrame(draw);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+    let raf = 0, x = 0, y = 0;
+    const move = (e) => {
+      x = e.clientX; y = e.clientY;
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        if (spot.current) spot.current.style.transform = `translate(${x - 320}px, ${y - 320}px)`;
+      });
     };
-    draw();
-    return () => { cancelAnimationFrame(raf); removeEventListener("resize", fit); removeEventListener("pointermove", move); };
+    window.addEventListener("pointermove", move, { passive: true });
+    return () => { window.removeEventListener("pointermove", move); cancelAnimationFrame(raf); };
   }, []);
-  return <canvas ref={ref} className="bg-canvas" aria-hidden="true" />;
+  return (
+    <div className="bg" aria-hidden="true">
+      <div className="bg-grid" />
+      <div className="bg-orb a" />
+      <div className="bg-orb b" />
+      <div ref={spot} className="bg-spot" />
+    </div>
+  );
 }

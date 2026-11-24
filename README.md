@@ -90,6 +90,14 @@ Half of the users show essentially zero lift; the top decile by baseline activit
 
 The S-Learner ranks users almost like the activity score (Spearman ρ = 0.96). Its edge is in the top ~10%, which matters most for small budgets. `causalml` does not build on Python 3.13 / Windows, so the three meta-learners are implemented in [`src/uplift_models.py`](src/uplift_models.py).
 
+Only **7 of the 12 features** move the S-Learner's prediction. Setting one feature at a time to its 5th, 15th, …, 95th percentile for 400 sample users and re-scoring them, the average swing in predicted uplift is:
+
+| Feature | f8 | f6 | f2 | f9 | f0 | f3 | f7 | f1, f4, f5, f10, f11 |
+|---|---|---|---|---|---|---|---|---|
+| Swing (extra visitors per 1,000) | 11.4 | 8.9 | 7.9 | 2.8 | 1.7 | 1.1 | 0.3 | 0 |
+
+The last five never change the prediction: the model does not use them.
+
 ![Qini and uplift curves](reports/figures/07_qini_uplift_curves.png)
 
 ### 5. The decision depends on how ads are bought
@@ -106,14 +114,16 @@ If the company paid per *targeted* user instead of per impression, the campaign 
 
 ## Web app
 
-A dark executive dashboard built for three audiences at once:
+A dark dashboard in three tabs, written so that business and technical readers can use the same page:
 
-- **Plain view (default):** each card is a short label, one big number, and one line explaining it ("36 / 1,000 saw an ad", "Most people picked never saw one").
-- **Technical switch:** the same layout swaps to ITT, confidence intervals, CACE, Qini, and ROI for technical readers.
-- **Decision panel:** pick the price per ad and see the recommendation and profit.
-- **"Should this person see the ad?":** pick a person or move 12 feature sliders; the trained S-Learner runs **in the browser** (ONNX via onnxruntime-web) and returns the predicted uplift and a show/skip decision.
+- **Overview:** the headline result (+11 extra visitors per 1,000 people), visit rates with and without ads, how many people actually saw an ad, the effect on those who did (CACE) next to the misleading naive comparison, extra purchases, and the profit and decision at the selected ad price.
+- **Targeting & price:** the targeting chart (share of extra visits captured, or profit, by how many people see ads), the ad price picker with the recommendation, return per ₹1 and profit, and a model comparison table (S-Learner vs the "most active users" rule).
+- **Try a person:** pick a person or move the feature sliders; the trained S-Learner runs **in the browser** (ONNX via onnxruntime-web) and returns the predicted uplift and a show/skip decision. The five features that move the prediction most are shown first, each with an impact label (High / Medium / Low / Unused) and a tooltip explaining it; the rest sit behind "Show more".
+- **Analyst view:** one switch turns every label and number into its statistical form (ITT with z and p, confidence intervals, CACE, Qini, ROI, τ(x)). Plain English is the default.
 
-Nothing in the app is hard-coded. [`src/export_app_data.py`](src/export_app_data.py) writes every number from the data and models to `app/public/data/app_data.json`, and [`src/export_onnx.py`](src/export_onnx.py) exports the model to `app/public/model/s_learner.onnx` with a parity check (max difference vs Python: 2e-7).
+Numbers count up, the targeting chart draws itself and the background moves slowly; all motion is switched off for visitors whose system asks to reduce motion.
+
+Nothing in the app is hard-coded. [`src/export_app_data.py`](src/export_app_data.py) writes every number from the data and models to `app/public/data/app_data.json`, and [`src/export_onnx.py`](src/export_onnx.py) exports the model to `app/public/model/s_learner.onnx` with a parity check (max difference vs Python: 2e-7). The feature impact ranking in "Try a person" is computed in the browser from the same model ([`app/src/lib/traits.js`](app/src/lib/traits.js)).
 
 Run it locally:
 
